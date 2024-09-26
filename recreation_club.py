@@ -30,8 +30,6 @@ def get_db_connection():
             user=USERNAME,
             password=PASSWORD,
             dsn=dsn,
-            # Ensure Thin mode is enabled (it's the default, but specifying it explicitly)
-            mode=oracledb.DEFAULT_MODE
         )
         return connection
     except oracledb.DatabaseError as e:
