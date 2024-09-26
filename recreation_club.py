@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-import cx_Oracle
+import oracledb  # Use python-oracledb instead of cx_Oracle
 from datetime import datetime, timedelta
 import io
 
@@ -11,15 +11,6 @@ st.set_page_config(
     layout="wide",
     )
 
-# Initialize Oracle client only once
-if 'oracle_client_initialized' not in st.session_state:
-    try:
-        cx_Oracle.init_oracle_client(lib_dir="/Users/belu/Desktop/database/instantclient_19_16")
-        st.session_state['oracle_client_initialized'] = True  # Set the flag to avoid re-initializing
-    except cx_Oracle.DatabaseError as e:
-        st.error(f"Failed to initialize Oracle Client: {str(e)}")
-        st.stop()
-
 # Connection details
 HOST_NAME = "imz409.ust.hk"
 PORT_NUMBER = "1521"
@@ -28,13 +19,22 @@ USERNAME = "sliangax"
 PASSWORD = "3976"
 
 
-# Function to connect to Oracle Database
+# Function to connect to Oracle Database using python-oracledb in Thin mode
 def get_db_connection():
     try:
-        dsn = cx_Oracle.makedsn(HOST_NAME, PORT_NUMBER, service_name=SERVICE_NAME)
-        connection = cx_Oracle.connect(user=USERNAME, password=PASSWORD, dsn=dsn)
+        # Create a DSN (Data Source Name)
+        dsn = oracledb.makedsn(HOST_NAME, PORT_NUMBER, service_name=SERVICE_NAME)
+
+        # Connect to the database using Thin mode (no Oracle Client needed)
+        connection = oracledb.connect(
+            user=USERNAME,
+            password=PASSWORD,
+            dsn=dsn,
+            # Ensure Thin mode is enabled (it's the default, but specifying it explicitly)
+            mode=oracledb.DEFAULT_MODE
+        )
         return connection
-    except cx_Oracle.DatabaseError as e:
+    except oracledb.DatabaseError as e:
         st.error(f"Database connection failed: {str(e)}")
         return None
 
@@ -46,6 +46,7 @@ if connection:
     connection.close()
 else:
     st.error("Failed to connect to the database.")
+
 
 # Member Sign-up Function
 def signup_new_member(first_name, last_name, gender, phone, email):

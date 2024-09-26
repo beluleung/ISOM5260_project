@@ -1,4 +1,4 @@
 streamlit
 pandas
 xlsxwriter
-cx_Oracle
+oracledb
