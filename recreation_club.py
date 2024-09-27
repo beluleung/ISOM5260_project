@@ -408,7 +408,8 @@ def manage_activities():
             if activity_name and location and price >= 0:
                 start_time_str = start_time.strftime("%H:%M:%S")
                 end_time_str = end_time.strftime("%H:%M:%S")
-                result = create_activity(activity_name, activity_date, start_time_str, end_time_str, location, price)
+                activity_date_str = activity_date.strftime("%Y-%m-%d")
+                result = create_activity(activity_name, activity_date_str, start_time_str, end_time_str, location, price)
                 st.success(result)
             else:
                 st.warning("Please fill in all the fields correctly.")
@@ -434,7 +435,8 @@ def manage_activities():
                 if activity_name and location and price >= 0:
                     start_time_str = start_time.strftime("%H:%M:%S")
                     end_time_str = end_time.strftime("%H:%M:%S")
-                    result = update_activity(activity_id, activity_name, activity_date, start_time_str, end_time_str, location, price)
+                    activity_date_str = activity_date.strftime("%Y-%m-%d")
+                    result = update_activity(activity_id, activity_name, activity_date_str, start_time_str, end_time_str, location, price)
                     st.success(result)
                 else:
                     st.warning("Please fill in all the fields correctly.")
