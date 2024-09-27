@@ -72,12 +72,12 @@ def signup_new_member(first_name, last_name, gender, phone, email):
         return "Invalid email format."
     if not is_valid_phone(phone):
         return  """
-Invalid phone number format. Only the following formats are allowed:
-    - 123-4567
-    - 555-1234
-    - 555-123-4567
-    - (555) 123-4567
-    - 1234567890 (only digits).
+Invalid phone number format. Only one of the following formats are allowed:
+    123-4567,
+    555-1234,
+    555-123-4567,
+    (555) 123-4567,
+    1234567890 (only digits).
     """
 
     connection = get_db_connection()
@@ -221,9 +221,21 @@ def browse_activities():
             st.warning("No activities found.")
             return None
 
+        # Process the data to convert datetime to just time (HH:MM)
+        processed_activities = []
+        for activity in activities:
+            activity_name, activity_date, start_time, end_time, location, price, instructor = activity
+
+            # Convert start_time and end_time to HH:MM format
+            start_time_str = start_time.strftime("%H:%M")  # Format time part only
+            end_time_str = end_time.strftime("%H:%M")      # Format time part only
+
+            # Append the processed data
+            processed_activities.append((activity_name, activity_date, start_time_str, end_time_str, location, price, instructor))
+
         # Convert the result to a pandas DataFrame
         columns = ['Activity Name', 'Date', 'Start Time', 'End Time', 'Location', 'Price', 'Instructor']
-        activities_df = pd.DataFrame(activities, columns=columns)
+        activities_df = pd.DataFrame(processed_activities, columns=columns)
 
         cursor.close()
         connection.close()
