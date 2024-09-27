@@ -61,14 +61,8 @@ def signup_new_member(first_name, last_name, gender, phone, email):
     if not is_valid_email(email):
         return "Invalid email format."
     if not is_valid_phone(phone):
-        return  """
-Invalid phone number format. Only the following formats are allowed:
-    - 123-4567
-    - 555-1234
-    - 555-123-4567
-    - (555) 123-4567
-    - 1234567890 (only digits).
-    """
+        return  "Invalid phone number format. Only the following formats are allowed: 123-4567, 555-1234, 555-123-4567, (555) 123-4567, 1234567890 (only digits)."
+
 
     connection = get_db_connection()
     if not connection:
@@ -311,6 +305,26 @@ def update_activity(activity_id, activity_name, activity_date, start_time, end_t
         cursor.close()
         connection.close()
 
+# Function to check for dependencies before attempting to delete an activity
+def has_child_records(activity_id):
+    connection = get_db_connection()
+    if not connection:
+        return True  # Treat as having child records if connection fails
+
+    cursor = connection.cursor()
+    try:
+        # Check for any related records in "SIGNUP" table
+        cursor.execute("SELECT COUNT(*) FROM SIGNUP WHERE activity_id = :activity_id", activity_id=activity_id)
+        count = cursor.fetchone()[0]
+        return count > 0  # Return True if there are child records
+    except Exception as e:
+        # Log the error or handle it accordingly
+        print(f"Error checking for child records: {e}")
+        return True  # Treat as having child records if an error occurs
+    finally:
+        cursor.close()
+        connection.close()
+
 # Function to delete an activity
 def delete_activity(activity_id):
     connection = get_db_connection()
@@ -372,7 +386,9 @@ def manage_activities():
 
         if st.button("Create Activity", key="create_activity_button"):
             if activity_name and location and price >= 0:
-                result = create_activity(activity_name, activity_date, start_time, end_time, location, price)
+                start_time_str = start_time.strftime("%H:%M:%S")
+                end_time_str = end_time.strftime("%H:%M:%S")
+                result = create_activity(activity_name, activity_date, start_time_str, end_time_str, location, price)
                 st.success(result)
             else:
                 st.warning("Please fill in all the fields correctly.")
@@ -396,7 +412,9 @@ def manage_activities():
 
             if st.button("Update Activity", key="update_activity_button"):
                 if activity_name and location and price >= 0:
-                    result = update_activity(activity_id, activity_name, activity_date, start_time, end_time, location, price)
+                    start_time_str = start_time.strftime("%H:%M:%S")
+                    end_time_str = end_time.strftime("%H:%M:%S")
+                    result = update_activity(activity_id, activity_name, activity_date, start_time_str, end_time_str, location, price)
                     st.success(result)
                 else:
                     st.warning("Please fill in all the fields correctly.")
@@ -413,8 +431,11 @@ def manage_activities():
             activity_id = activity_map[activity_choice]
 
             if st.button("Delete Activity", key="delete_activity_button"):
-                result = delete_activity(activity_id)
-                st.success(result)
+                if not has_child_records(activity_id):
+                    result = delete_activity(activity_id)
+                    st.success(result)
+                else:
+                    st.warning("Cannot delete this activity because it has associated records.")
         else:
             st.warning("No activities found.")
 
