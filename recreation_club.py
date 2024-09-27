@@ -331,40 +331,45 @@ def fetch_all_activities():
 def manage_activities():
     st.subheader("Admin: Manage Activities")
 
+    # Tabs for creating, editing, or deleting activities
     tabs = st.tabs(["Create Activity", "Edit Activity", "Delete Activity"])
 
+    # Tab 1: Create Activity
     with tabs[0]:
         st.subheader("Create a New Activity")
-        activity_name = st.text_input("Activity Name")
-        activity_date = st.date_input("Activity Date")
-        start_time = st.time_input("Start Time")
-        end_time = st.time_input("End Time")
-        location = st.text_input("Location")
-        price = st.number_input("Price", min_value=0.0, format="%.2f")
+        # Add keys to ensure unique IDs
+        activity_name = st.text_input("Activity Name", key="create_activity_name")
+        activity_date = st.date_input("Activity Date", key="create_activity_date")
+        start_time = st.time_input("Start Time", key="create_start_time")
+        end_time = st.time_input("End Time", key="create_end_time")
+        location = st.text_input("Location", key="create_location")
+        price = st.number_input("Price", min_value=0.0, format="%.2f", key="create_price")
 
-        if st.button("Create Activity"):
+        if st.button("Create Activity", key="create_activity_button"):
             if activity_name and location and price >= 0:
                 result = create_activity(activity_name, activity_date, start_time, end_time, location, price)
                 st.success(result)
             else:
                 st.warning("Please fill in all the fields correctly.")
 
+    # Tab 2: Edit Activity
     with tabs[1]:
         st.subheader("Edit an Existing Activity")
         activities = fetch_all_activities()
         if activities:
             activity_map = {f"{name} (ID: {id})": id for id, name in activities}
-            activity_choice = st.selectbox("Select an Activity to Edit", list(activity_map.keys()))
+            activity_choice = st.selectbox("Select an Activity to Edit", list(activity_map.keys()), key="edit_activity_choice")
             activity_id = activity_map[activity_choice]
 
-            activity_name = st.text_input("Activity Name")
-            activity_date = st.date_input("Activity Date")
-            start_time = st.time_input("Start Time")
-            end_time = st.time_input("End Time")
-            location = st.text_input("Location")
-            price = st.number_input("Price", min_value=0.0, format="%.2f")
+            # Add keys to ensure unique IDs
+            activity_name = st.text_input("Activity Name", key="edit_activity_name")
+            activity_date = st.date_input("Activity Date", key="edit_activity_date")
+            start_time = st.time_input("Start Time", key="edit_start_time")
+            end_time = st.time_input("End Time", key="edit_end_time")
+            location = st.text_input("Location", key="edit_location")
+            price = st.number_input("Price", min_value=0.0, format="%.2f", key="edit_price")
 
-            if st.button("Update Activity"):
+            if st.button("Update Activity", key="update_activity_button"):
                 if activity_name and location and price >= 0:
                     result = update_activity(activity_id, activity_name, activity_date, start_time, end_time, location, price)
                     st.success(result)
@@ -373,15 +378,16 @@ def manage_activities():
         else:
             st.warning("No activities found.")
 
+    # Tab 3: Delete Activity
     with tabs[2]:
         st.subheader("Delete an Activity")
         activities = fetch_all_activities()
         if activities:
             activity_map = {f"{name} (ID: {id})": id for id, name in activities}
-            activity_choice = st.selectbox("Select an Activity to Delete", list(activity_map.keys()))
+            activity_choice = st.selectbox("Select an Activity to Delete", list(activity_map.keys()), key="delete_activity_choice")
             activity_id = activity_map[activity_choice]
 
-            if st.button("Delete Activity"):
+            if st.button("Delete Activity", key="delete_activity_button"):
                 result = delete_activity(activity_id)
                 st.success(result)
         else:
