@@ -4,6 +4,7 @@ import oracledb  # Use python-oracledb instead of cx_Oracle
 from datetime import datetime, timedelta
 import io
 import re  # For input validation
+from datetime import datetime
 
 # Streamlit page configuration
 st.set_page_config(
@@ -263,15 +264,19 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
     cursor = connection.cursor()
 
     try:
-        # Step 1: Find the current maximum activityid
+        # Step 1: Ensure activity_date is in the correct format
+        if isinstance(activity_date, datetime):
+            activity_date = activity_date.strftime("%Y-%m-%d")  # Format to YYYY-MM-DD
+
+        # Step 2: Find the current maximum activityid
         cursor.execute("SELECT MAX(activityid) FROM Activity")
         max_activityid = cursor.fetchone()[0] or 0  # Default to 0 if no activities exist
 
-        # Step 2: Get the current next value of the activity_seq sequence
+        # Step 3: Get the current next value of the activity_seq sequence
         cursor.execute("SELECT activity_seq.NEXTVAL FROM dual")
         current_seq_value = cursor.fetchone()[0]
 
-        # Step 3: If the sequence is behind, restart it with a value higher than max_activityid
+        # Step 4: If the sequence is behind, restart it with a value higher than max_activityid
         if current_seq_value <= max_activityid:
             new_value = max_activityid + 1
             cursor.execute(f"ALTER SEQUENCE activity_seq RESTART START WITH {new_value}")
@@ -281,10 +286,10 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
             cursor.execute("SELECT activity_seq.NEXTVAL FROM dual")
             current_seq_value = cursor.fetchone()[0]
 
-        # Step 4: Insert the new activity into the Activity table using the adjusted sequence
+        # Step 5: Insert the new activity into the Activity table using the adjusted sequence
         cursor.execute("""
             INSERT INTO Activity (activityid, activityname, activity_date, start_time, end_time, location, price)
-            VALUES (:activity_id, :activity_name, :activity_date, :start_time, :end_time, :location, :price)
+            VALUES (:activity_id, :activity_name, TO_DATE(:activity_date, 'YYYY-MM-DD'), :start_time, :end_time, :location, :price)
         """, activity_id=current_seq_value, activity_name=activity_name, activity_date=activity_date,
            start_time=start_time, end_time=end_time, location=location, price=price)
 
@@ -307,9 +312,13 @@ def update_activity(activity_id, activity_name, activity_date, start_time, end_t
     cursor = connection.cursor()
 
     try:
+        # Ensure activity_date is in the correct format
+        if isinstance(activity_date, datetime):
+            activity_date = activity_date.strftime("%Y-%m-%d")  # Format to YYYY-MM-DD
+
         cursor.execute("""
             UPDATE Activity
-            SET activityname = :activity_name, activity_date = :activity_date, start_time = :start_time,
+            SET activityname = :activity_name, activity_date = TO_DATE(:activity_date, 'YYYY-MM-DD'), start_time = :start_time,
                 end_time = :end_time, location = :location, price = :price
             WHERE activityid = :activity_id
         """, activity_name=activity_name, activity_date=activity_date, start_time=start_time,
