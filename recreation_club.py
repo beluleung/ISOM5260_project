@@ -226,12 +226,15 @@ def browse_activities():
         for activity in activities:
             activity_name, activity_date, start_time, end_time, location, price, instructor = activity
 
+            # Convert activity_date to 'YYYY-MM-DD' format (just the date part)
+            activity_date_str = activity_date.strftime("%Y-%m-%d")  # Format date part only
+
             # Convert start_time and end_time to HH:MM format
             start_time_str = start_time.strftime("%H:%M")  # Format time part only
             end_time_str = end_time.strftime("%H:%M")      # Format time part only
 
             # Append the processed data
-            processed_activities.append((activity_name, activity_date, start_time_str, end_time_str, location, price, instructor))
+            processed_activities.append((activity_name, activity_date_str, start_time_str, end_time_str, location, price, instructor))
 
         # Convert the result to a pandas DataFrame
         columns = ['Activity Name', 'Date', 'Start Time', 'End Time', 'Location', 'Price', 'Instructor']
@@ -275,14 +278,18 @@ def execute_custom_query(query):
         cursor.execute(query)
         data = cursor.fetchall()
 
-        # Get the column names from the cursor and create the DataFrame
+        # Check if data is returned
+        if not data:
+            return None  # Return None if no rows are returned
+
+        # Get the column names from the cursor
         columns = [col[0] for col in cursor.description]  # Fetch column headers
         query_data = pd.DataFrame(data, columns=columns)
 
     except Exception as e:
         # Handle any errors that occur during query execution
-        query_data = pd.DataFrame()  # Return an empty DataFrame on error
-        print(f"An error occurred: {e}")
+        query_data = None  # Return None on error
+        st.error(f"An error occurred while executing the query: {e}")
 
     finally:
         # Always close the cursor and connection
