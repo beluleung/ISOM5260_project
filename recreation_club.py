@@ -61,7 +61,7 @@ def signup_new_member(first_name, last_name, gender, phone, email):
     if not is_valid_email(email):
         return "Invalid email format."
     if not is_valid_phone(phone):
-        return  "Invalid phone number format. Only the following formats are allowed: 123-4567, 555-1234, 555-123-4567, (555) 123-4567, 1234567890 (only digits)."
+        return  "Only the following phone number formats are allowed: 123-4567, 555-1234, 555-123-4567, (555) 123-4567, 1234567890 (only digits)."
 
 
     connection = get_db_connection()
