@@ -263,10 +263,30 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
     cursor = connection.cursor()
 
     try:
+        # Step 1: Find the current maximum activityid
+        cursor.execute("SELECT MAX(activityid) FROM Activity")
+        max_activityid = cursor.fetchone()[0] or 0  # Default to 0 if no activities exist
+
+        # Step 2: Get the current next value of the activity_seq sequence
+        cursor.execute("SELECT activity_seq.NEXTVAL FROM dual")
+        current_seq_value = cursor.fetchone()[0]
+
+        # Step 3: If the sequence is behind, restart it with a value higher than max_activityid
+        if current_seq_value <= max_activityid:
+            new_value = max_activityid + 1
+            cursor.execute(f"ALTER SEQUENCE activity_seq RESTART START WITH {new_value}")
+            connection.commit()  # Commit the sequence adjustment
+
+            # Get the next value after restarting
+            cursor.execute("SELECT activity_seq.NEXTVAL FROM dual")
+            current_seq_value = cursor.fetchone()[0]
+
+        # Step 4: Insert the new activity into the Activity table using the adjusted sequence
         cursor.execute("""
             INSERT INTO Activity (activityid, activityname, activity_date, start_time, end_time, location, price)
-            VALUES (activity_seq.NEXTVAL, :activity_name, :activity_date, :start_time, :end_time, :location, :price)
-        """, activity_name=activity_name, activity_date=activity_date, start_time=start_time, end_time=end_time, location=location, price=price)
+            VALUES (:activity_id, :activity_name, :activity_date, :start_time, :end_time, :location, :price)
+        """, activity_id=current_seq_value, activity_name=activity_name, activity_date=activity_date,
+           start_time=start_time, end_time=end_time, location=location, price=price)
 
         connection.commit()
         return f"Activity '{activity_name}' created successfully!"
