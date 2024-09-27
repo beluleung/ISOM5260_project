@@ -3,6 +3,7 @@ import streamlit as st
 import oracledb  # Use python-oracledb instead of cx_Oracle
 from datetime import datetime, timedelta
 import io
+import re  # For input validation
 
 # Streamlit page configuration
 st.set_page_config(
@@ -10,6 +11,24 @@ st.set_page_config(
     page_icon="💪",
     layout="wide",
     )
+
+# Helper function for email validation
+def is_valid_email(email):
+    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    return re.match(pattern, email)
+
+# Helper function for phone number validation (simple numeric check)
+def is_valid_phone(phone):
+    """
+    Validates phone numbers in the following formats:
+    - 123-4567
+    - 555-1234
+    - 555-123-4567
+    - (555) 123-4567
+    - 1234567890 (only digits)
+    """
+    pattern = r'^(\(\d{3}\)\s*|\d{3}[-\.\s]?)?\d{3}[-\.\s]?\d{4}$'
+    return re.match(pattern, phone)
 
 # Connection details
 HOST_NAME = "imz409.ust.hk"
@@ -46,97 +65,125 @@ else:
     st.error("Failed to connect to the database.")
 
 
-# Member Sign-up Function
+# Member Sign-up Function with Unique Email Validation
 def signup_new_member(first_name, last_name, gender, phone, email):
+    # Validate user inputs
+    if not is_valid_email(email):
+        return "Invalid email format."
+    if not is_valid_phone(phone):
+        return "Invalid phone number format. It should only contain numbers and be 10 or 11 digits long."
+
     connection = get_db_connection()
+    if not connection:
+        return "Database connection failed."
+
     cursor = connection.cursor()
 
-    # Step 1: Find the current maximum memberid in the Member table
-    cursor.execute("SELECT MAX(memberid) FROM Member")
-    max_memberid = cursor.fetchone()[0]  # Fetch the max memberid
+    try:
+        # Step 1: Check for existing email (unique email constraint)
+        cursor.execute("SELECT COUNT(*) FROM Member WHERE email = :email", email=email)
+        if cursor.fetchone()[0] > 0:
+            return "A member with this email already exists. Please use a different email."
 
-    if max_memberid is None:
-        max_memberid = 0  # If no members exist, set max_memberid to 0
+        # Step 2: Find the current maximum memberid in the Member table
+        cursor.execute("SELECT MAX(memberid) FROM Member")
+        max_memberid = cursor.fetchone()[0]  # Fetch the max memberid
 
-    # Step 2: Get the current next value of the member_seq sequence
-    cursor.execute("SELECT member_seq.NEXTVAL FROM dual")
-    current_seq_value = cursor.fetchone()[0]  # Fetch the next sequence value
+        if max_memberid is None:
+            max_memberid = 0  # If no members exist, set max_memberid to 0
 
-    # Step 3: If the sequence is behind, restart it with a value higher than max_memberid
-    if current_seq_value <= max_memberid:
-        new_value = max_memberid + 1
-        cursor.execute(f"ALTER SEQUENCE member_seq RESTART START WITH {new_value}")
-        connection.commit()  # Commit the sequence adjustment
+        # Step 3: Get the current next value of the member_seq sequence
+        cursor.execute("SELECT member_seq.NEXTVAL FROM dual")
+        current_seq_value = cursor.fetchone()[0]  # Fetch the next sequence value
 
-    # Step 4: Automatically calculate join_date, expire_date, and set status to 'active'
-    join_date = datetime.now()
-    expire_date = datetime.now() + timedelta(days=365)  # Expire in 1 year
-    status = 'active'
-
-    # Step 5: Insert the new member into the Members table using the adjusted sequence
-    cursor.execute("""
-        INSERT INTO Member (memberid, first_name, last_name, gender, phone, email, join_date, expire_date, status)
-        VALUES (member_seq.NEXTVAL, :first_name, :last_name, :gender, :phone, :email, :join_date, :expire_date, :status)
-    """, first_name=first_name, last_name=last_name, gender=gender, phone=phone, email=email, join_date=join_date, expire_date=expire_date, status=status)
-
-    # Commit the transaction
-    connection.commit()
-
-    # Close the cursor and connection
-    cursor.close()
-    connection.close()
-
-    return "New member successfully signed up!"
-
-# Activity Sign-up Function
-def signup_for_activity(member_name, email, activity_id):
-    connection = get_db_connection()
-    cursor = connection.cursor()
-
-    # Step 1: Check if the member exists
-    cursor.execute("SELECT memberid FROM Member WHERE email = :email", email=email)
-    member = cursor.fetchone()
-
-    if member:
-        member_id = member[0]
-        signup_date = datetime.now()
-
-        # Step 2: Find the current maximum signupid in the SignUp table
-        cursor.execute("SELECT MAX(signupid) FROM SignUp")
-        max_signupid = cursor.fetchone()[0]
-
-        if max_signupid is None:
-            max_signupid = 0  # If no signups exist, set max_signupid to 0
-
-        # Step 3: Get the current next value of the signups_seq sequence
-        cursor.execute("SELECT signups_seq.NEXTVAL FROM dual")
-        current_seq_value = cursor.fetchone()[0]
-
-        # Step 4: If the sequence is behind, restart it with a value higher than max_signupid
-        if current_seq_value <= max_signupid:
-            new_value = max_signupid + 1
-            cursor.execute(f"ALTER SEQUENCE signups_seq RESTART START WITH {new_value}")
+        # Step 4: If the sequence is behind, restart it with a value higher than max_memberid
+        if current_seq_value <= max_memberid:
+            new_value = max_memberid + 1
+            cursor.execute(f"ALTER SEQUENCE member_seq RESTART START WITH {new_value}")
             connection.commit()  # Commit the sequence adjustment
 
-        # Step 5: Insert the new sign-up into the SignUp table using the adjusted sequence
+        # Step 5: Automatically calculate join_date, expire_date, and set status to 'active'
+        join_date = datetime.now()
+        expire_date = datetime.now() + timedelta(days=365)  # Expire in 1 year
+        status = 'active'
+
+        # Step 6: Insert the new member into the Members table using the adjusted sequence
         cursor.execute("""
-            INSERT INTO SignUp (signupid, memberid, activityid, signup_date)
-            VALUES (signups_seq.NEXTVAL, :member_id, :activity_id, :signup_date)
-        """, member_id=member_id, activity_id=activity_id, signup_date=signup_date)
+            INSERT INTO Member (memberid, first_name, last_name, gender, phone, email, join_date, expire_date, status)
+            VALUES (member_seq.NEXTVAL, :first_name, :last_name, :gender, :phone, :email, :join_date, :expire_date, :status)
+        """, first_name=first_name, last_name=last_name, gender=gender, phone=phone, email=email, join_date=join_date, expire_date=expire_date, status=status)
 
         # Commit the transaction
         connection.commit()
 
+    except Exception as e:
+        return f"Failed to sign up new member: {e}"
+
+    finally:
         # Close the cursor and connection
         cursor.close()
         connection.close()
 
-        return f"{member_name} has successfully signed up for activity {activity_id}!"
-    else:
-        # Member not found
+    return "New member successfully signed up!"
+
+# Activity Sign-up Function with Validation
+def signup_for_activity(member_name, email, activity_id):
+    # Validate inputs
+    if not is_valid_email(email):
+        return "Invalid email format."
+
+    connection = get_db_connection()
+    if not connection:
+        return "Database connection failed."
+
+    cursor = connection.cursor()
+
+    try:
+        # Step 1: Check if the member exists
+        cursor.execute("SELECT memberid FROM Member WHERE email = :email", email=email)
+        member = cursor.fetchone()
+
+        if member:
+            member_id = member[0]
+            signup_date = datetime.now()
+
+            # Step 2: Find the current maximum signupid in the SignUp table
+            cursor.execute("SELECT MAX(signupid) FROM SignUp")
+            max_signupid = cursor.fetchone()[0]
+
+            if max_signupid is None:
+                max_signupid = 0  # If no signups exist, set max_signupid to 0
+
+            # Step 3: Get the current next value of the signups_seq sequence
+            cursor.execute("SELECT signups_seq.NEXTVAL FROM dual")
+            current_seq_value = cursor.fetchone()[0]
+
+            # Step 4: If the sequence is behind, restart it with a value higher than max_signupid
+            if current_seq_value <= max_signupid:
+                new_value = max_signupid + 1
+                cursor.execute(f"ALTER SEQUENCE signups_seq RESTART START WITH {new_value}")
+                connection.commit()  # Commit the sequence adjustment
+
+            # Step 5: Insert the new sign-up into the SignUp table using the adjusted sequence
+            cursor.execute("""
+                INSERT INTO SignUp (signupid, memberid, activityid, signup_date)
+                VALUES (signups_seq.NEXTVAL, :member_id, :activity_id, :signup_date)
+            """, member_id=member_id, activity_id=activity_id, signup_date=signup_date)
+
+            # Commit the transaction
+            connection.commit()
+
+            return f"{member_name} has successfully signed up for activity {activity_id}!"
+        else:
+            return "Member not found. Please sign up first."
+
+    except Exception as e:
+        return f"Failed to sign up for activity: {e}"
+
+    finally:
+        # Close the cursor and connection
         cursor.close()
         connection.close()
-        return "Member not found. Please sign up first."
 
 # Function to browse all activities and display in a table
 def browse_activities():
