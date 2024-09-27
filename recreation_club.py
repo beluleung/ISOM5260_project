@@ -19,6 +19,14 @@ def is_valid_email(email):
 
 # Helper function for phone number validation (simple numeric check)
 def is_valid_phone(phone):
+    """
+    Validates phone numbers in the following formats:
+    - 123-4567
+    - 555-1234
+    - 555-123-4567
+    - (555) 123-4567
+    - 1234567890 (only digits)
+    """
     pattern = r'^(\(\d{3}\)\s*|\d{3}[-\.\s]?)?\d{3}[-\.\s]?\d{4}$'
     return re.match(pattern, phone)
 
@@ -49,10 +57,18 @@ else:
 
 # Member Sign-up Function with Unique Email Validation
 def signup_new_member(first_name, last_name, gender, phone, email):
+    # Validate user inputs
     if not is_valid_email(email):
         return "Invalid email format."
     if not is_valid_phone(phone):
-        return "Invalid phone number format."
+        return  """
+Invalid phone number format. Only the following formats are allowed:
+    - 123-4567
+    - 555-1234
+    - 555-123-4567
+    - (555) 123-4567
+    - 1234567890 (only digits).
+    """
 
     connection = get_db_connection()
     if not connection:
@@ -61,38 +77,47 @@ def signup_new_member(first_name, last_name, gender, phone, email):
     cursor = connection.cursor()
 
     try:
+        # Step 1: Check for existing email (unique email constraint)
         cursor.execute("SELECT COUNT(*) FROM Member WHERE email = :email", email=email)
         if cursor.fetchone()[0] > 0:
             return "A member with this email already exists. Please use a different email."
 
+        # Step 2: Find the current maximum memberid in the Member table
         cursor.execute("SELECT MAX(memberid) FROM Member")
-        max_memberid = cursor.fetchone()[0]
+        max_memberid = cursor.fetchone()[0]  # Fetch the max memberid
+
         if max_memberid is None:
-            max_memberid = 0
+            max_memberid = 0  # If no members exist, set max_memberid to 0
 
+        # Step 3: Get the current next value of the member_seq sequence
         cursor.execute("SELECT member_seq.NEXTVAL FROM dual")
-        current_seq_value = cursor.fetchone()[0]
+        current_seq_value = cursor.fetchone()[0]  # Fetch the next sequence value
 
+        # Step 4: If the sequence is behind, restart it with a value higher than max_memberid
         if current_seq_value <= max_memberid:
             new_value = max_memberid + 1
             cursor.execute(f"ALTER SEQUENCE member_seq RESTART START WITH {new_value}")
-            connection.commit()
+            connection.commit()  # Commit the sequence adjustment
 
+        # Step 5: Automatically calculate join_date, expire_date, and set status to 'active'
         join_date = datetime.now()
-        expire_date = datetime.now() + timedelta(days=365)
+        expire_date = datetime.now() + timedelta(days=365)  # Expire in 1 year
         status = 'active'
 
+        # Step 6: Insert the new member into the Members table using the adjusted sequence
         cursor.execute("""
             INSERT INTO Member (memberid, first_name, last_name, gender, phone, email, join_date, expire_date, status)
             VALUES (member_seq.NEXTVAL, :first_name, :last_name, :gender, :phone, :email, :join_date, :expire_date, :status)
         """, first_name=first_name, last_name=last_name, gender=gender, phone=phone, email=email, join_date=join_date, expire_date=expire_date, status=status)
 
+        # Commit the transaction
         connection.commit()
 
     except Exception as e:
         return f"Failed to sign up new member: {e}"
 
     finally:
+        # Close the cursor and connection
         cursor.close()
         connection.close()
 
