@@ -178,7 +178,7 @@ def browse_activities():
         cursor = connection.cursor()
 
         query = """
-        SELECT a.activityname, a.activity_date, a.start_time, a.end_time, a.capacity, a.location, a.price,
+        SELECT a.activityid, a.activityname, a.activity_date, a.start_time, a.end_time, a.capacity, a.location, a.price,
                i.first_name || ' ' || i.last_name AS instructor
         FROM Activity a
         LEFT JOIN InstructorActivity ia ON a.activityid = ia.activityid
@@ -194,13 +194,13 @@ def browse_activities():
 
         processed_activities = []
         for activity in activities:
-            activity_name, activity_date, start_time, end_time, capacity, location, price, instructor = activity
+            activityid, activity_name, activity_date, start_time, end_time, capacity, location, price, instructor = activity
             activity_date_str = activity_date.strftime("%Y-%m-%d")
             start_time_str = start_time.strftime("%H:%M")
             end_time_str = end_time.strftime("%H:%M")
-            processed_activities.append((activity_name, activity_date_str, start_time_str, end_time_str, capacity, location, price, instructor))
+            processed_activities.append((activityid, activity_name, activity_date_str, start_time_str, end_time_str, capacity, location, price, instructor))
 
-        columns = ['Activity Name', 'Date', 'Start Time', 'End Time', 'Capacity', 'Location', 'Price', 'Instructor']
+        columns = ['Activity ID','Activity Name', 'Date', 'Start Time', 'End Time', 'Capacity', 'Location', 'Price', 'Instructor']
         activities_df = pd.DataFrame(processed_activities, columns=columns)
 
         cursor.close()
