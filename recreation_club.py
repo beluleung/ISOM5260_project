@@ -264,8 +264,8 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
     cursor = connection.cursor()
 
     try:
-        # Log the date to check its format and type
-        print(f"Activity Date: {activity_date}, Type: {type(activity_date)}")
+        # Ensure activity_date is a string in the correct format
+        activity_date_str = activity_date.strftime("%Y-%m-%d")
 
         # Step 2: Find the current maximum activityid
         cursor.execute("SELECT MAX(activityid) FROM Activity")
@@ -288,8 +288,8 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
         # Step 5: Insert the new activity into the Activity table using the adjusted sequence
         cursor.execute("""
             INSERT INTO Activity (activityid, activityname, activity_date, start_time, end_time, location, price)
-            VALUES (:activity_id, :activity_name, :activity_date, :start_time, :end_time, :location, :price)
-        """, activity_id=current_seq_value, activity_name=activity_name, activity_date=activity_date,
+            VALUES (:activity_id, :activity_name, TO_DATE(:activity_date, 'YYYY-MM-DD'), :start_time, :end_time, :location, :price)
+        """, activity_id=current_seq_value, activity_name=activity_name, activity_date=activity_date_str,
            start_time=start_time, end_time=end_time, location=location, price=price)
 
         connection.commit()
