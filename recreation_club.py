@@ -445,7 +445,7 @@ def manage_activities():
             activity_date = st.date_input("Activity Date", key="edit_activity_date")
             start_time = st.time_input("Start Time", key="edit_start_time")
             end_time = st.time_input("End Time", key="edit_end_time")
-            capacity = st.number_input("Capacity", min_value=1, key="create_capacity")
+            capacity = st.number_input("Capacity", min_value=1, key="edit_capacity")
             location = st.text_input("Location", key="edit_location")
             price = st.number_input("Price", min_value=0.0, format="%.2f", key="edit_price")
 
