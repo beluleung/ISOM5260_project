@@ -266,7 +266,7 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
     try:
         # Step 1: Ensure activity_date is in the correct format
         if isinstance(activity_date, datetime):
-            activity_date = activity_date.strftime("%Y-%m-%d")  # Format to YYYY-MM-DD
+            activity_date = activity_date.date()  # Convert to date object
 
         # Step 2: Find the current maximum activityid
         cursor.execute("SELECT MAX(activityid) FROM Activity")
@@ -289,7 +289,7 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
         # Step 5: Insert the new activity into the Activity table using the adjusted sequence
         cursor.execute("""
             INSERT INTO Activity (activityid, activityname, activity_date, start_time, end_time, location, price)
-            VALUES (:activity_id, :activity_name, TO_DATE(:activity_date, 'YYYY-MM-DD'), :start_time, :end_time, :location, :price)
+            VALUES (:activity_id, :activity_name, :activity_date, :start_time, :end_time, :location, :price)
         """, activity_id=current_seq_value, activity_name=activity_name, activity_date=activity_date,
            start_time=start_time, end_time=end_time, location=location, price=price)
 
@@ -314,7 +314,7 @@ def update_activity(activity_id, activity_name, activity_date, start_time, end_t
     try:
         # Ensure activity_date is in the correct format
         if isinstance(activity_date, datetime):
-            activity_date = activity_date.strftime("%Y-%m-%d")  # Format to YYYY-MM-DD
+            activity_date = activity_date.date()  # Convert to date object
 
         # Update query using date and timestamp objects directly
         cursor.execute("""
