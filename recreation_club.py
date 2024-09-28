@@ -266,7 +266,7 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
     try:
         # Step 1: Ensure activity_date is in the correct format
         if isinstance(activity_date, datetime):
-            activity_date = activity_date.strftime("%d-%b-%y").upper()  # Format to DD-MMM-YY
+            activity_date = activity_date.strftime("%Y-%m-%d")  # Format to YYYY-MM-DD
 
         # Step 2: Find the current maximum activityid
         cursor.execute("SELECT MAX(activityid) FROM Activity")
@@ -314,7 +314,7 @@ def update_activity(activity_id, activity_name, activity_date, start_time, end_t
     try:
         # Ensure activity_date is in the correct format
         if isinstance(activity_date, datetime):
-            activity_date = activity_date.strftime("%d-%b-%y").upper()  # Format to DD-MMM-YY
+            activity_date = activity_date.strftime("%Y-%m-%d")  # Format to YYYY-MM-DD
 
         # Update query using date and timestamp objects directly
         cursor.execute("""
