@@ -222,7 +222,7 @@ def generate_signup_report():
         FROM SignUp s
         JOIN Member m ON s.memberid = m.memberid
         JOIN Activity a ON s.activityid = a.activityid
-        ORDER BY s.signup_date
+        ORDER BY s.signup_date DESC
     """)
 
     report_data = cursor.fetchall()
@@ -265,8 +265,8 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
 
     try:
         # Step 1: Ensure activity_date is in the correct format
-        if isinstance(activity_date, datetime):
-            activity_date = activity_date.strftime("%Y-%m-%d")  # Format to YYYY-MM-DD
+        #if isinstance(activity_date, datetime):
+        #    activity_date = activity_date.strftime("%Y-%m-%d")  # Format to YYYY-MM-DD
 
         # Step 2: Find the current maximum activityid
         cursor.execute("SELECT MAX(activityid) FROM Activity")
@@ -313,12 +313,13 @@ def update_activity(activity_id, activity_name, activity_date, start_time, end_t
 
     try:
         # Ensure activity_date is in the correct format
-        if isinstance(activity_date, datetime):
-            activity_date = activity_date.strftime("%Y-%m-%d")  # Format to YYYY-MM-DD
+        #if isinstance(activity_date, datetime):
+        #    activity_date = activity_date.strftime("%Y-%m-%d")  # Format to YYYY-MM-DD
 
+        # Update query using date and timestamp objects directly
         cursor.execute("""
             UPDATE Activity
-            SET activityname = :activity_name, activity_date = TO_DATE(:activity_date, 'YYYY-MM-DD'), start_time = :start_time,
+            SET activityname = :activity_name, activity_date = :activity_date, start_time = :start_time,
                 end_time = :end_time, location = :location, price = :price
             WHERE activityid = :activity_id
         """, activity_name=activity_name, activity_date=activity_date, start_time=start_time,
@@ -415,10 +416,10 @@ def manage_activities():
 
         if st.button("Create Activity", key="create_activity_button"):
             if activity_name and location and price >= 0:
-                start_time_str = start_time.strftime("%H:%M:%S")
-                end_time_str = end_time.strftime("%H:%M:%S")
-                activity_date_str = activity_date.strftime("%Y-%m-%d")
-                result = create_activity(activity_name, activity_date_str, start_time_str, end_time_str, location, price)
+                #start_time_str = start_time.strftime("%H:%M:%S")
+                #end_time_str = end_time.strftime("%H:%M:%S")
+                #activity_date_str = activity_date.strftime("%Y-%m-%d")
+                result = create_activity(activity_name, activity_date, start_time, end_time, location, price)
                 st.success(result)
             else:
                 st.warning("Please fill in all the fields correctly.")
@@ -442,10 +443,10 @@ def manage_activities():
 
             if st.button("Update Activity", key="update_activity_button"):
                 if activity_name and location and price >= 0:
-                    start_time_str = start_time.strftime("%H:%M:%S")
-                    end_time_str = end_time.strftime("%H:%M:%S")
-                    activity_date_str = activity_date.strftime("%Y-%m-%d")
-                    result = update_activity(activity_id, activity_name, activity_date_str, start_time_str, end_time_str, location, price)
+                    #start_time_str = start_time.strftime("%H:%M:%S")
+                    #end_time_str = end_time.strftime("%H:%M:%S")
+                    #activity_date_str = activity_date.strftime("%Y-%m-%d")
+                    result = update_activity(activity_id, activity_name, activity_date, start_time, end_time, location, price)
                     st.success(result)
                 else:
                     st.warning("Please fill in all the fields correctly.")
