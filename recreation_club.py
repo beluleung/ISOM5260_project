@@ -178,11 +178,11 @@ def browse_activities():
         cursor = connection.cursor()
 
         query = """
-        SELECT a.activityname, a.activity_date, a.start_time, a.end_time, a.location, a.price,
+        SELECT a.activityname, a.activity_date, a.start_time, a.end_time, a.capacity, a.location, a.price,
                i.first_name || ' ' || i.last_name AS instructor
         FROM Activity a
-        JOIN InstructorActivity ia ON a.activityid = ia.activityid
-        JOIN Instructor i ON ia.instructorid = i.instructorid
+        LEFT JOIN InstructorActivity ia ON a.activityid = ia.activityid
+        LEFT JOIN Instructor i ON ia.instructorid = i.instructorid
         ORDER BY a.activity_date
         """
         cursor.execute(query)
@@ -194,13 +194,13 @@ def browse_activities():
 
         processed_activities = []
         for activity in activities:
-            activity_name, activity_date, start_time, end_time, location, price, instructor = activity
+            activity_name, activity_date, start_time, end_time, capacity, location, price, instructor = activity
             activity_date_str = activity_date.strftime("%Y-%m-%d")
             start_time_str = start_time.strftime("%H:%M")
             end_time_str = end_time.strftime("%H:%M")
-            processed_activities.append((activity_name, activity_date_str, start_time_str, end_time_str, location, price, instructor))
+            processed_activities.append((activity_name, activity_date_str, start_time_str, end_time_str, capacity, location, price, instructor))
 
-        columns = ['Activity Name', 'Date', 'Start Time', 'End Time', 'Location', 'Price', 'Instructor']
+        columns = ['Activity Name', 'Date', 'Start Time', 'End Time', 'Capacity', 'Location', 'Price', 'Instructor']
         activities_df = pd.DataFrame(processed_activities, columns=columns)
 
         cursor.close()
@@ -256,7 +256,7 @@ def execute_custom_query(query):
     return query_data
 
 # Function to create a new activity in the database
-def create_activity(activity_name, activity_date, start_time, end_time, location, price):
+def create_activity(activity_name, activity_date, start_time, end_time, capacity, location, price):
     connection = get_db_connection()
     if not connection:
         return "Database connection failed."
@@ -287,15 +287,16 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
 
         # Insert the new activity into the Activity table using the adjusted sequence
         cursor.execute("""
-            INSERT INTO Activity (activityid, activityname, activity_date, start_time, end_time, location, price)
+            INSERT INTO Activity (activityid, activityname, activity_date, start_time, end_time, capacity, location, price)
             VALUES (:activity_id, :activity_name, TO_DATE(:activity_date, 'DD-MON-YY'), TO_TIMESTAMP(:start_time, 'HH24:MI:SS'),
-                    TO_TIMESTAMP(:end_time, 'HH24:MI:SS'), :location, :price)
+                    TO_TIMESTAMP(:end_time, 'HH24:MI:SS'), :capacity, :location, :price)
         """, {
             'activity_id': current_seq_value,
             'activity_name': activity_name,
             'activity_date': activity_date_str,
             'start_time': start_time_str,
             'end_time': end_time_str,
+            'capacity': capacity,
             'location': location,
             'price': price
         })
@@ -311,7 +312,7 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
         connection.close()
 
 # Function to update an existing activity
-def update_activity(activity_id, activity_name, activity_date, start_time, end_time, location, price):
+def update_activity(activity_id, activity_name, activity_date, start_time, end_time, capacity, location, price):
     connection = get_db_connection()
     if not connection:
         return "Database connection failed."
@@ -328,10 +329,10 @@ def update_activity(activity_id, activity_name, activity_date, start_time, end_t
         cursor.execute("""
             UPDATE Activity
             SET activityname = :activity_name, TO_DATE(:activity_date, 'DD-MON-YY'), TO_TIMESTAMP(:start_time, 'HH24:MI:SS'),
-                    TO_TIMESTAMP(:end_time, 'HH24:MI:SS'), location = :location, price = :price
+                    TO_TIMESTAMP(:end_time, 'HH24:MI:SS'), capacity = :capacity, location = :location, price = :price
             WHERE activityid = :activity_id
         """, activity_name=activity_name, activity_date=activity_date_str, start_time=start_time_str,
-        end_time=end_time_str, location=location, price=price, activity_id=activity_id)
+        end_time=end_time_str, capacity=capacity, location=location, price=price, activity_id=activity_id)
 
         connection.commit()
         return f"Activity '{activity_name}' updated successfully!"
@@ -419,12 +420,13 @@ def manage_activities():
         activity_date = st.date_input("Activity Date", key="create_activity_date")
         start_time = st.time_input("Start Time", key="create_start_time")
         end_time = st.time_input("End Time", key="create_end_time")
+        capacity = st.number_input("Capacity", min_value=1, key="create_capacity")  # Add capacity field
         location = st.text_input("Location", key="create_location")
         price = st.number_input("Price", min_value=0.0, format="%.2f", key="create_price")
 
         if st.button("Create Activity", key="create_activity_button"):
             if activity_name and location and price >= 0:
-                result = create_activity(activity_name, activity_date, start_time, end_time, location, price)
+                result = create_activity(activity_name, activity_date, start_time, end_time, capacity, location, price)
                 st.success(result)
             else:
                 st.warning("Please fill in all the fields correctly.")
@@ -443,18 +445,14 @@ def manage_activities():
             activity_date = st.date_input("Activity Date", key="edit_activity_date")
             start_time = st.time_input("Start Time", key="edit_start_time")
             end_time = st.time_input("End Time", key="edit_end_time")
+            capacity = st.number_input("Capacity", min_value=1, key="create_capacity")
             location = st.text_input("Location", key="edit_location")
             price = st.number_input("Price", min_value=0.0, format="%.2f", key="edit_price")
 
-            # Ensure the date is in the correct format for your function
-            if isinstance(activity_date, datetime):
-                activity_date_str = activity_date.strftime("%d-%b-%y")  # Format to match expected input
-            else:
-                activity_date_str = activity_date.strftime("%d-%b-%y")  # Handle if it’s a date object
 
             if st.button("Update Activity", key="update_activity_button"):
                 if activity_name and location and price >= 0:
-                    result = update_activity(activity_id, activity_name, activity_date, start_time, end_time, location, price)
+                    result = update_activity(activity_id, activity_name, activity_date, start_time, end_time, capacity, location, price)
                     st.success(result)
                 else:
                     st.warning("Please fill in all the fields correctly.")
