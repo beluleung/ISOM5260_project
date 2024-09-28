@@ -268,8 +268,9 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
         print(f"Activity Date: {activity_date}, Type: {type(activity_date)}")
 
         # Step 1: Ensure activity_date is in the correct format
-        if isinstance(activity_date, datetime):
-            activity_date = activity_date.date()  # Convert to date object
+        activity_date = datetime.strptime(activity_date, '%Y-%m-%d')
+        #if isinstance(activity_date, datetime):
+        #    activity_date = activity_date.date()  # Convert to date object
 
         # Step 2: Find the current maximum activityid
         cursor.execute("SELECT MAX(activityid) FROM Activity")
