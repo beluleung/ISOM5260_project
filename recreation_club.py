@@ -264,33 +264,41 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
     cursor = connection.cursor()
 
     try:
-        # Ensure activity_date is a string in the correct format
-        activity_date_str = activity_date.strftime("%d-%b-%y").upper()  # Format to DD-MMM-YY
+        # Convert the date and time to strings in the correct format
+        activity_date_str = activity_date.strftime("%d-%b-%y")  # Oracle DATE format
+        start_time_str = start_time.strftime("%H:%M:%S")  # Oracle TIMESTAMP format
+        end_time_str = end_time.strftime("%H:%M:%S")  # Oracle TIMESTAMP format
 
-        # Step 2: Find the current maximum activityid
+        # Find the current maximum activityid
         cursor.execute("SELECT MAX(activityid) FROM Activity")
-        max_activityid = cursor.fetchone()[0] or 0  # Default to 0 if no activities exist
+        max_activityid = cursor.fetchone()[0] or 0
 
-        # Step 3: Get the current next value of the activity_seq sequence
+        # Get the current next value of the activity_seq sequence
         cursor.execute("SELECT activity_seq.NEXTVAL FROM dual")
         current_seq_value = cursor.fetchone()[0]
 
-        # Step 4: If the sequence is behind, restart it with a value higher than max_activityid
+        # If the sequence is behind, restart it with a value higher than max_activityid
         if current_seq_value <= max_activityid:
             new_value = max_activityid + 1
             cursor.execute(f"ALTER SEQUENCE activity_seq RESTART START WITH {new_value}")
-            connection.commit()  # Commit the sequence adjustment
-
-            # Get the next value after restarting
+            connection.commit()
             cursor.execute("SELECT activity_seq.NEXTVAL FROM dual")
             current_seq_value = cursor.fetchone()[0]
 
-        # Step 5: Insert the new activity into the Activity table using the adjusted sequence
+        # Insert the new activity into the Activity table using the adjusted sequence
         cursor.execute("""
             INSERT INTO Activity (activityid, activityname, activity_date, start_time, end_time, location, price)
-            VALUES (:activity_id, :activity_name, TO_DATE(:activity_date, 'DD-MON-YY'), :start_time, :end_time, :location, :price)
-        """, activity_id=current_seq_value, activity_name=activity_name, activity_date=activity_date_str,
-           start_time=start_time, end_time=end_time, location=location, price=price)
+            VALUES (:activity_id, :activity_name, TO_DATE(:activity_date, 'DD-MON-YY'), TO_TIMESTAMP(:start_time, 'HH24:MI:SS'),
+                    TO_TIMESTAMP(:end_time, 'HH24:MI:SS'), :location, :price)
+        """, {
+            'activity_id': current_seq_value,
+            'activity_name': activity_name,
+            'activity_date': activity_date_str,
+            'start_time': start_time_str,
+            'end_time': end_time_str,
+            'location': location,
+            'price': price
+        })
 
         connection.commit()
         return f"Activity '{activity_name}' created successfully!"
@@ -311,18 +319,19 @@ def update_activity(activity_id, activity_name, activity_date, start_time, end_t
     cursor = connection.cursor()
 
     try:
-        # Ensure activity_date is in the correct format
-        if isinstance(activity_date, datetime):
-            activity_date = activity_date.date()  # Convert to date object
+        # Convert the date and time to strings in the correct format
+        activity_date_str = activity_date.strftime("%d-%b-%y")  # Oracle DATE format
+        start_time_str = start_time.strftime("%H:%M:%S")  # Oracle TIMESTAMP format
+        end_time_str = end_time.strftime("%H:%M:%S")  # Oracle TIMESTAMP format
 
         # Update query using date and timestamp objects directly
         cursor.execute("""
             UPDATE Activity
-            SET activityname = :activity_name, activity_date = :activity_date, start_time = :start_time,
-                end_time = :end_time, location = :location, price = :price
+            SET activityname = :activity_name, TO_DATE(:activity_date, 'DD-MON-YY'), TO_TIMESTAMP(:start_time, 'HH24:MI:SS'),
+                    TO_TIMESTAMP(:end_time, 'HH24:MI:SS'), location = :location, price = :price
             WHERE activityid = :activity_id
-        """, activity_name=activity_name, activity_date=activity_date, start_time=start_time,
-        end_time=end_time, location=location, price=price, activity_id=activity_id)
+        """, activity_name=activity_name, activity_date=activity_date_str, start_time=start_time_str,
+        end_time=end_time_str, location=location, price=price, activity_id=activity_id)
 
         connection.commit()
         return f"Activity '{activity_name}' updated successfully!"
@@ -415,9 +424,7 @@ def manage_activities():
 
         if st.button("Create Activity", key="create_activity_button"):
             if activity_name and location and price >= 0:
-                start_time_str = start_time.strftime("%H:%M:%S")
-                end_time_str = end_time.strftime("%H:%M:%S")
-                result = create_activity(activity_name, activity_date, start_time_str, end_time_str, location, price)
+                result = create_activity(activity_name, activity_date, start_time, end_time, location, price)
                 st.success(result)
             else:
                 st.warning("Please fill in all the fields correctly.")
@@ -439,11 +446,15 @@ def manage_activities():
             location = st.text_input("Location", key="edit_location")
             price = st.number_input("Price", min_value=0.0, format="%.2f", key="edit_price")
 
+            # Ensure the date is in the correct format for your function
+            if isinstance(activity_date, datetime):
+                activity_date_str = activity_date.strftime("%d-%b-%y")  # Format to match expected input
+            else:
+                activity_date_str = activity_date.strftime("%d-%b-%y")  # Handle if it’s a date object
+
             if st.button("Update Activity", key="update_activity_button"):
                 if activity_name and location and price >= 0:
-                    start_time_str = start_time.strftime("%H:%M:%S")
-                    end_time_str = end_time.strftime("%H:%M:%S")
-                    result = update_activity(activity_id, activity_name, activity_date, start_time_str, end_time_str, location, price)
+                    result = update_activity(activity_id, activity_name, activity_date, start_time, end_time, location, price)
                     st.success(result)
                 else:
                     st.warning("Please fill in all the fields correctly.")
