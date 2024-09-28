@@ -264,6 +264,9 @@ def create_activity(activity_name, activity_date, start_time, end_time, location
     cursor = connection.cursor()
 
     try:
+        # Log the date to check its format and type
+        print(f"Activity Date: {activity_date}, Type: {type(activity_date)}")
+
         # Step 1: Ensure activity_date is in the correct format
         if isinstance(activity_date, datetime):
             activity_date = activity_date.date()  # Convert to date object
