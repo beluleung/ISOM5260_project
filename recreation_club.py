@@ -255,8 +255,29 @@ def execute_custom_query(query):
 
     return query_data
 
+# Function to fetch instructors
+def fetch_instructors():
+    connection = get_db_connection()
+    if not connection:
+        return []
+
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute("SELECT instructorid, first_name || ' ' || last_name FROM Instructor ORDER BY first_name")
+        instructors = cursor.fetchall()
+        return instructors
+
+    except Exception as e:
+        st.error("Failed to fetch instructors.")
+        return []
+
+    finally:
+        cursor.close()
+        connection.close()
+
 # Function to create a new activity in the database
-def create_activity(activity_name, activity_date, start_time, end_time, capacity, location, price):
+def create_activity(activity_name, activity_date, start_time, end_time, capacity, location, price, instructor_id):
     connection = get_db_connection()
     if not connection:
         return "Database connection failed."
@@ -300,6 +321,10 @@ def create_activity(activity_name, activity_date, start_time, end_time, capacity
             'location': location,
             'price': price
         })
+        cursor.execute("INSERT INTO InstructorActivity (activityid, instructorid) VALUES (:activity_id, :instructor_id)", {
+            'activity_id': current_seq_value,
+            'instructor_id': instructor_id
+        })
 
         connection.commit()
         return f"Activity '{activity_name}' created successfully!"
@@ -312,7 +337,7 @@ def create_activity(activity_name, activity_date, start_time, end_time, capacity
         connection.close()
 
 # Function to update an existing activity
-def update_activity(activity_id, activity_name, activity_date, start_time, end_time, capacity, location, price):
+def update_activity(activity_id, activity_name, activity_date, start_time, end_time, capacity, location, price, instructor_id):
     connection = get_db_connection()
     if not connection:
         return "Database connection failed."
@@ -333,6 +358,11 @@ def update_activity(activity_id, activity_name, activity_date, start_time, end_t
             WHERE activityid = :activity_id
         """, activity_name=activity_name, activity_date=activity_date_str, start_time=start_time_str,
         end_time=end_time_str, capacity=capacity, location=location, price=price, activity_id=activity_id)
+
+        cursor.execute("UPDATE InstructorActivity SET instructorid = :instructor_id WHERE activityid = :activity_id", {
+            'instructor_id': instructor_id,
+            'activity_id': activity_id
+        })
 
         connection.commit()
         return f"Activity '{activity_name}' updated successfully!"
@@ -366,6 +396,9 @@ def has_child_records(activity_id):
 
 # Function to delete an activity
 def delete_activity(activity_id):
+    if has_child_records(activity_id):
+        return "Cannot delete this activity because it has associated records."
+
     connection = get_db_connection()
     if not connection:
         return "Database connection failed."
@@ -373,13 +406,11 @@ def delete_activity(activity_id):
     cursor = connection.cursor()
 
     try:
-        cursor.execute("DELETE FROM Activity WHERE activityid = :activity_id", activity_id=activity_id)
+        cursor.execute("DELETE FROM Activity WHERE activityid = :activity_id", {'activity_id': activity_id})
         connection.commit()
         return "Activity deleted successfully!"
-
     except Exception as e:
         return f"Failed to delete activity: {e}"
-
     finally:
         cursor.close()
         connection.close()
@@ -412,6 +443,9 @@ def manage_activities():
     # Tabs for creating, editing, or deleting activities
     tabs = st.tabs(["Create Activity", "Edit Activity", "Delete Activity"])
 
+    instructors = fetch_instructors()
+    instructor_map = {f"{name} (ID: {id})": id for id, name in instructors} if instructors else {}
+
     # Tab 1: Create Activity
     with tabs[0]:
         st.subheader("Create a New Activity")
@@ -423,10 +457,12 @@ def manage_activities():
         capacity = st.number_input("Capacity", min_value=1, key="create_capacity")  # Add capacity field
         location = st.text_input("Location", key="create_location")
         price = st.number_input("Price", min_value=0.0, format="%.2f", key="create_price")
+        instructor_choice = st.selectbox("Instructor", list(instructor_map.keys()), key="create_instructor")
 
         if st.button("Create Activity", key="create_activity_button"):
             if activity_name and location and price >= 0:
-                result = create_activity(activity_name, activity_date, start_time, end_time, capacity, location, price)
+                instructor_id = instructor_map[instructor_choice]  # Extract instructor_id
+                result = create_activity(activity_name, activity_date, start_time, end_time, capacity, location, price, instructor_id)
                 st.success(result)
             else:
                 st.warning("Please fill in all the fields correctly.")
@@ -448,11 +484,12 @@ def manage_activities():
             capacity = st.number_input("Capacity", min_value=1, key="edit_capacity")
             location = st.text_input("Location", key="edit_location")
             price = st.number_input("Price", min_value=0.0, format="%.2f", key="edit_price")
-
+            instructor_choice = st.selectbox("Instructor", list(instructor_map.keys()), key="edit_instructor")
 
             if st.button("Update Activity", key="update_activity_button"):
                 if activity_name and location and price >= 0:
-                    result = update_activity(activity_id, activity_name, activity_date, start_time, end_time, capacity, location, price)
+                    instructor_id = instructor_map[instructor_choice]
+                    result = update_activity(activity_id, activity_name, activity_date, start_time, end_time, capacity, location, price, instructor_id)
                     st.success(result)
                 else:
                     st.warning("Please fill in all the fields correctly.")
