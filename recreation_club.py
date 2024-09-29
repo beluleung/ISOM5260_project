@@ -395,7 +395,7 @@ def has_child_records(activity_id):
     cursor = connection.cursor()
     try:
         # Check for any related records in "SIGNUP" table
-        cursor.execute("SELECT COUNT(*) FROM SIGNUP WHERE activity_id = :activity_id", activity_id=activity_id)
+        cursor.execute("SELECT COUNT(*) FROM SignUp WHERE activityid = :activity_id", {'activity_id': activity_id})
         count = cursor.fetchone()[0]
         return count > 0  # Return True if there are child records
     except Exception as e:
