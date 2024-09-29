@@ -345,19 +345,31 @@ def update_activity(activity_id, activity_name, activity_date, start_time, end_t
     cursor = connection.cursor()
 
     try:
-        # Convert the date and time to strings in the correct format
-        activity_date_str = activity_date.strftime("%d-%b-%y")  # Oracle DATE format
-        start_time_str = start_time.strftime("%H:%M:%S")  # Oracle TIMESTAMP format
-        end_time_str = end_time.strftime("%H:%M:%S")  # Oracle TIMESTAMP format
+        activity_date_str = activity_date.strftime("%d-%b-%y")
+        start_time_str = start_time.strftime("%H:%M:%S")
+        end_time_str = end_time.strftime("%H:%M:%S")
 
-        # Update query using date and timestamp objects directly
+        # Correct the SQL query
         cursor.execute("""
             UPDATE Activity
-            SET activityname = :activity_name, TO_DATE(:activity_date, 'DD-MON-YY'), TO_TIMESTAMP(:start_time, 'HH24:MI:SS'),
-                    TO_TIMESTAMP(:end_time, 'HH24:MI:SS'), capacity = :capacity, location = :location, price = :price
+            SET activityname = :activity_name,
+                activity_date = TO_DATE(:activity_date, 'DD-MON-YY'),
+                start_time = TO_TIMESTAMP(:start_time, 'HH24:MI:SS'),
+                end_time = TO_TIMESTAMP(:end_time, 'HH24:MI:SS'),
+                capacity = :capacity,
+                location = :location,
+                price = :price
             WHERE activityid = :activity_id
-        """, activity_name=activity_name, activity_date=activity_date_str, start_time=start_time_str,
-        end_time=end_time_str, capacity=capacity, location=location, price=price, activity_id=activity_id)
+        """, {
+            'activity_name': activity_name,
+            'activity_date': activity_date_str,
+            'start_time': start_time_str,
+            'end_time': end_time_str,
+            'capacity': capacity,
+            'location': location,
+            'price': price,
+            'activity_id': activity_id
+        })
 
         cursor.execute("UPDATE InstructorActivity SET instructorid = :instructor_id WHERE activityid = :activity_id", {
             'instructor_id': instructor_id,
